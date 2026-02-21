@@ -1,0 +1,36 @@
+# ==============================
+# JUSTEXA — .gitignore
+# ==============================
+
+# ⚠️ NEVER commit this — contains real API keys and DB credentials
+.env
+.env.local
+.env.production
+.env.*
+
+# Node dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
+client/build/
+client/.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# MongoDB portable files (large binaries)
+mongodb-portable.zip
+mongodb-installer.msi
