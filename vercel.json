@@ -1,0 +1,10 @@
+{
+    "buildCommand": "cd client && npm install && npm run build",
+    "outputDirectory": "client/build",
+    "installCommand": "npm install",
+    "build": {
+        "env": {
+            "CI": "false"
+        }
+    }
+}
