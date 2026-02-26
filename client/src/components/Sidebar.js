@@ -16,6 +16,7 @@ const Sidebar = ({ isOpen }) => {
         { path: '/case-tracker', label: t.nav_cases, icon: '⚖' },
         { path: '/holidays', label: t.nav_calendar, icon: '📅' },
         { path: '/marketplace', label: t.nav_marketplace, icon: '👥', userOnly: true },
+        { path: '/inbox', label: 'Inbox', icon: '📥' },
     ];
 
     const filteredItems = NAV_ITEMS.filter(item => {

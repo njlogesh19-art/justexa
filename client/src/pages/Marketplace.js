@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAdvocates, seedAdvocates } from '../utils/api';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import T from '../context/translations';
 
 const SPECIALIZATIONS = [
@@ -32,6 +33,7 @@ function advocateRating(str = '') {
 
 const AdvocateCard = ({ advocate }) => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const fee = advocate.consultation_fee;
     const rating = advocateRating(advocate.bar_council_id || advocate.email);
 
@@ -80,13 +82,27 @@ const AdvocateCard = ({ advocate }) => {
                 </div>
             </div>
 
-            <button
-                id={`view-profile-${advocate._id}`}
-                className="btn btn-primary w-full"
-                onClick={e => { e.stopPropagation(); navigate(`/marketplace/${advocate._id}`); }}
-            >
-                View Profile & Contact →
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                    id={`view-profile-${advocate._id}`}
+                    className="btn btn-primary"
+                    style={{ flex: 1 }}
+                    onClick={e => { e.stopPropagation(); navigate(`/marketplace/${advocate._id}`); }}
+                >
+                    View Profile →
+                </button>
+                {user && user.role !== 'advocate' && (
+                    <button
+                        id={`message-btn-${advocate._id}`}
+                        className="btn btn-outline"
+                        title={`Message ${advocate.name}`}
+                        onClick={e => { e.stopPropagation(); navigate(`/messages/${advocate._id}`); }}
+                        style={{ flexShrink: 0, padding: '0.5rem 0.85rem', fontSize: '1.1rem' }}
+                    >
+                        💬
+                    </button>
+                )}
+            </div>
         </div>
     );
 };

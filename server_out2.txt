@@ -1,0 +1,7 @@
+🔗 Connecting to MongoDB: mongodb+srv://***@justexa.kinmhkk.mongodb.net/justexa?retryWrites=true&w=majority&appName=justexa
+✅ Connected to MongoDB successfully!
+📦 Database: justexa
+👑 Admin account already exists in "admin" collection.
+✅ Hearing-reminder cron job scheduled (daily 8:00 AM IST)
+🚀 Justexa server running on http://localhost:5000
+📋 Collections: users, advocates, cases, petitions, casenotifications

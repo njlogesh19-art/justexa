@@ -11,7 +11,11 @@ const adminApi = {
     addCase: (d) => api.post('/api/admin/add-case', d),
     updateCase: (id, d) => api.put(`/api/admin/cases/${id}`, d),
     deleteCase: (id) => api.delete(`/api/admin/cases/${id}`),
+    getPendingAdvocates: () => api.get('/api/admin/pending-advocates'),
+    approveAdvocate: (id) => api.put(`/api/admin/advocates/${id}/approve`),
+    rejectAdvocate: (id) => api.put(`/api/admin/advocates/${id}/reject`),
 };
+
 
 const SPECIALIZATIONS = [
     'Criminal Law', 'Civil Litigation', 'Family Law', 'Corporate Law', 'Constitutional Law',
@@ -79,6 +83,7 @@ const AdminDashboard = () => {
     const [tab, setTab] = useState('overview');
     const [advocates, setAdvocates] = useState([]);
     const [cases, setCases] = useState([]);
+    const [pendingAdvocates, setPendingAdvocates] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [advForm, setAdvForm] = useState(EMPTY_ADV);
@@ -96,14 +101,26 @@ const AdminDashboard = () => {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [a, c] = await Promise.all([adminApi.getAdvocates(), adminApi.getCases()]);
+            const [a, c, p] = await Promise.all([adminApi.getAdvocates(), adminApi.getCases(), adminApi.getPendingAdvocates()]);
             setAdvocates(a.data.advocates || []);
             setCases(c.data.cases || []);
+            setPendingAdvocates(p.data.advocates || []);
         } catch { showToast('Failed to load data.', 'error'); }
         finally { setLoading(false); }
     }, []);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // ── Pending Approvals ──
+    const approveAdv = async (id) => {
+        try { await adminApi.approveAdvocate(id); showToast('Advocate approved ✅'); loadData(); }
+        catch { showToast('Approval failed.', 'error'); }
+    };
+    const rejectAdv = async (id) => {
+        if (!window.confirm('Reject this advocate registration?')) return;
+        try { await adminApi.rejectAdvocate(id); showToast('Advocate rejected.'); loadData(); }
+        catch { showToast('Rejection failed.', 'error'); }
+    };
 
     // ── Advocate CRUD ──
     const submitAdv = async (e) => {
@@ -218,10 +235,12 @@ const AdminDashboard = () => {
             {/* Tabs */}
             <div className="tabs">
                 {[{ id: 'overview', icon: '📊', label: 'Overview' },
+                { id: 'approvals', icon: '🔔', label: `Approvals${pendingAdvocates.length > 0 ? ` (${pendingAdvocates.length})` : ''}` },
                 { id: 'advocates', icon: '⚖️', label: 'Advocates' },
                 { id: 'cases', icon: '📁', label: 'Cases' }].map(t => (
                     <button key={t.id} className={`tab ${tab === t.id ? 'active' : ''}`}
-                        onClick={() => setTab(t.id)}>
+                        onClick={() => setTab(t.id)}
+                        style={t.id === 'approvals' && pendingAdvocates.length > 0 ? { color: '#b45309', fontWeight: 800 } : {}}>
                         {t.icon} {t.label}
                     </button>
                 ))}
@@ -233,11 +252,77 @@ const AdminDashboard = () => {
                 </div>
             ) : (
                 <>
+                    {/* ── PENDING APPROVALS ── */}
+                    {tab === 'approvals' && (
+                        <div className="animate-fade-in">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                                <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.2rem', fontWeight: 700 }}>🔔 Pending Registrations</h2>
+                                <span style={{ fontSize: '0.82rem', color: 'var(--gray-500)' }}>{pendingAdvocates.length} application{pendingAdvocates.length !== 1 ? 's' : ''} awaiting review</span>
+                            </div>
+
+                            {pendingAdvocates.length === 0 ? (
+                                <div className="card card-elevated" style={{ textAlign: 'center', padding: '3rem', color: 'var(--gray-400)' }}>
+                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
+                                    <p>No pending registrations. You're all caught up!</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gap: '1rem' }}>
+                                    {pendingAdvocates.map(adv => (
+                                        <div key={adv._id} className="card card-elevated" style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
+                                            <div style={{
+                                                width: '52px', height: '52px', borderRadius: '50%', flexShrink: 0,
+                                                background: 'var(--black)', color: 'var(--white)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '1.3rem', fontWeight: 700
+                                            }}>
+                                                {adv.name?.charAt(0)?.toUpperCase()}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>{adv.name}</div>
+                                                        <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>{adv.email} {adv.mobile_no && `· ${adv.mobile_no}`}</div>
+                                                    </div>
+                                                    <span style={{ background: '#fef9c3', color: '#854d0e', border: '1px solid #fde68a', borderRadius: '100px', padding: '0.2rem 0.65rem', fontSize: '0.72rem', fontWeight: 700 }}>⏳ Pending</span>
+                                                </div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                                    {[adv.specialization, `${adv.experience || adv.experience_years || 0} yrs exp`, adv.city, adv.bar_council_id].filter(Boolean).map((tag, i) => (
+                                                        <span key={i} className="badge badge-light" style={{ fontFamily: 'monospace', fontSize: '0.73rem' }}>{tag}</span>
+                                                    ))}
+                                                </div>
+                                                {adv.bio && <p style={{ fontSize: '0.82rem', color: 'var(--gray-600)', marginTop: '0.5rem', lineHeight: 1.6 }}>{adv.bio}</p>}
+                                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                                                    <button
+                                                        id={`approve-${adv._id}`}
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => approveAdv(adv._id)}
+                                                        style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                                                    >
+                                                        ✅ Approve
+                                                    </button>
+                                                    <button
+                                                        id={`reject-${adv._id}`}
+                                                        className="btn btn-outline btn-sm"
+                                                        onClick={() => rejectAdv(adv._id)}
+                                                        style={{ color: '#dc2626', borderColor: '#dc2626' }}
+                                                    >
+                                                        ❌ Reject
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* ── OVERVIEW ── */}
                     {tab === 'overview' && (
                         <div className="animate-fade-in" style={{ display: 'grid', gap: '1.5rem' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px,1fr))', gap: '1rem' }}>
                                 <StatCard icon="⚖️" label="Total Advocates" value={advocates.length} />
+                                <StatCard icon="🔔" label="Pending Approvals" value={pendingAdvocates.length} />
                                 <StatCard icon="📁" label="Total Cases" value={cases.length} />
                                 <StatCard icon="🕐" label="Pending" value={cases.filter(c => c.status === 'Pending').length} />
                                 <StatCard icon="🔵" label="Ongoing" value={cases.filter(c => c.status === 'Ongoing').length} />

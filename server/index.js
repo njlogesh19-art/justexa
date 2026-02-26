@@ -3,8 +3,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const cron = require('node-cron');
+const bcrypt = require('bcryptjs');
+const Admin = require('./models/Admin');
 
-dotenv.config({ path: '../.env' });
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 
@@ -13,6 +16,15 @@ app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
 }));
+
+// Security headers — fixes Cross-Origin-Opener-Policy (COOP) console warnings
+// Setting to 'same-origin-allow-popups' allows Google OAuth & popup flows to work
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  res.setHeader('Cross-Origin-Embedder-Policy', 'unsafe-none');
+  next();
+});
+
 app.use(express.json());
 
 // Routes
@@ -24,6 +36,36 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/petition', require('./routes/petition'));
 app.use('/api/holidays', require('./routes/holidays'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/messages', require('./routes/messages'));
+app.use('/api/message-requests', require('./routes/messageRequests'));
+app.use('/api/upload', require('./routes/upload'));
+
+// Admin Seeding — only creates the record once, never overwrites the password hash
+const seedAdmin = async () => {
+  try {
+    const adminEmail = 'n.j.logesh06@gmail.com';
+    const adminPassword = 'Leo@1905';
+
+    // Check if admin already exists in the 'admin' collection
+    const existing = await Admin.findOne({ email: adminEmail });
+    if (existing) {
+      console.log('👑 Admin account already exists in "admin" collection.');
+      return;
+    }
+
+    // First-time setup: hash and store
+    const hashedPassword = await bcrypt.hash(adminPassword, 12);
+    await Admin.create({
+      name: 'Administrator',
+      email: adminEmail,
+      password: hashedPassword,
+      role: 'admin',
+    });
+    console.log('👑 Admin account created in "admin" collection.');
+  } catch (err) {
+    console.error('❌ Failed to seed admin account:', err.message);
+  }
+};
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -47,9 +89,13 @@ mongoose.connect(MONGODB_URI, {
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 10000,
 })
-  .then(() => {
+  .then(async () => {
     console.log('✅ Connected to MongoDB successfully!');
     console.log(`📦 Database: justexa`);
+
+    // Seed admin
+    await seedAdmin();
+
     app.listen(PORT, () => {
       console.log(`🚀 Justexa server running on http://localhost:${PORT}`);
       console.log(`📋 Collections: users, advocates, cases, petitions, casenotifications`);

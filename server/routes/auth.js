@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Advocate = require('../models/Advocate');
+const LoginHistory = require('../models/LoginHistory');
+const { sendAdminNewAdvocateAlert } = require('../utils/mailer');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -43,12 +45,12 @@ router.post('/register/user', async (req, res) => {
     }
 });
 
-// Register Advocate
+// Register Advocate (Pending Admin Approval)
 router.post('/register/advocate', async (req, res) => {
     try {
-        const { name, bar_council_id, email, specialization, experience, password } = req.body;
-        if (!name || !bar_council_id || !email || !specialization || !experience || !password) {
-            return res.status(400).json({ message: 'All fields are required.' });
+        const { name, bar_council_id, email, mobile_no, specialization, experience, city, consultation_fee, bio, password } = req.body;
+        if (!name || !bar_council_id || !email || !specialization || !password) {
+            return res.status(400).json({ message: 'Name, Bar Council ID, Email, Specialization, and Password are required.' });
         }
         if (!validatePassword(password)) {
             return res.status(400).json({ message: 'Password must be 8+ characters with uppercase, lowercase, number, and special character.' });
@@ -59,14 +61,25 @@ router.post('/register/advocate', async (req, res) => {
         if (existingBarId) return res.status(409).json({ message: 'Bar Council ID already registered.' });
 
         const hashedPassword = await bcrypt.hash(password, 12);
-        const advocate = new Advocate({ name, bar_council_id, email, specialization, experience: Number(experience), password: hashedPassword });
+        const advocate = new Advocate({
+            name, bar_council_id, email,
+            mobile_no: mobile_no || '',
+            specialization,
+            experience: Number(experience) || 0,
+            experience_years: Number(experience) || 0,
+            city: city || '',
+            consultation_fee: Number(consultation_fee) || 0,
+            bio: bio || '',
+            password: hashedPassword,
+            status: 'pending' // Requires admin approval
+        });
         await advocate.save();
 
-        const token = jwt.sign({ id: advocate._id, role: 'advocate', email: advocate.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        res.status(201).json({
-            token, role: 'advocate',
-            user: { id: advocate._id, name: advocate.name, email: advocate.email, specialization: advocate.specialization, experience: advocate.experience, bar_council_id: advocate.bar_council_id }
-        });
+        // Notify admin via email — non-blocking
+        sendAdminNewAdvocateAlert(advocate).catch(() => { });
+
+        // No token issued — advocate must wait for admin approval
+        res.status(201).json({ message: 'Registration submitted successfully. Your application is pending admin approval. You will be able to login once approved.' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error during registration.' });
@@ -102,7 +115,30 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, account.password);
         if (!isMatch) return res.status(401).json({ message: 'Invalid email or password.' });
 
+        // Check advocate approval status
+        if (role === 'advocate') {
+            if (account.status === 'pending') {
+                return res.status(403).json({ message: 'Your registration is pending admin approval. Please wait for approval before logging in.' });
+            }
+            if (account.status === 'rejected') {
+                return res.status(403).json({ message: 'Your registration has been rejected. Please contact support.' });
+            }
+        }
+
         const token = jwt.sign({ id: account._id, role, email: account.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        // Log successful login
+        try {
+            await LoginHistory.create({
+                userId: account._id,
+                userModel: role === 'user' ? 'User' : 'Advocate',
+                email: account.email,
+                ipAddress: req.ip || req.connection.remoteAddress,
+                userAgent: req.headers['user-agent']
+            });
+        } catch (logErr) {
+            console.error('Failed to log login:', logErr);
+        }
 
         const userData = {
             id: account._id,
@@ -112,7 +148,8 @@ router.post('/login', async (req, res) => {
             ...(role === 'user' ? { location: account.location } : {
                 bar_council_id: account.bar_council_id,
                 specialization: account.specialization,
-                experience: account.experience
+                experience: account.experience,
+                city: account.city
             })
         };
 
@@ -140,19 +177,33 @@ router.post('/google', async (req, res) => {
                 name: name || email.split('@')[0],
                 email,
                 location: '',
-                password: await bcrypt.hash((googleId || email) + process.env.JWT_SECRET, 10),
+                password: await bcrypt.hash((googleId || email) + (process.env.JWT_SECRET || 'fallback'), 10),
                 googleId: googleId || '',
                 picture: picture || ''
             });
             await user.save();
-        } else if (!user.googleId && googleId) {
-            // Link Google account to existing user
-            user.googleId = googleId;
-            if (picture && !user.picture) user.picture = picture;
-            await user.save();
+        } else {
+            // Update Google info on existing user if not already set
+            let needsSave = false;
+            if (!user.googleId && googleId) { user.googleId = googleId; needsSave = true; }
+            if (picture && !user.picture) { user.picture = picture; needsSave = true; }
+            if (needsSave) await user.save();
         }
 
         const token = jwt.sign({ id: user._id, role: 'user', email: user.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
+
+        // Log successful login
+        try {
+            await LoginHistory.create({
+                userId: user._id,
+                userModel: 'User',
+                email: user.email,
+                ipAddress: req.ip || req.connection?.remoteAddress,
+                userAgent: req.headers['user-agent']
+            });
+        } catch (logErr) {
+            console.error('Failed to log login:', logErr.message);
+        }
 
         res.json({
             token,
@@ -160,8 +211,8 @@ router.post('/google', async (req, res) => {
             user: { id: user._id, name: user.name, email: user.email, location: user.location, picture: user.picture }
         });
     } catch (err) {
-        console.error('Google auth error:', err);
-        res.status(401).json({ message: 'Google sign-in failed. Please try again.' });
+        console.error('Google auth error:', err.message, err.stack);
+        res.status(401).json({ message: `Google sign-in failed: ${err.message}` });
     }
 });
 

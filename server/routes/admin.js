@@ -5,12 +5,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Advocate = require('../models/Advocate');
 const Case = require('../models/Case');
+const Admin = require('../models/Admin');
+const LoginHistory = require('../models/LoginHistory');
 const authMiddleware = require('../middleware/auth');
-
-// ─── Admin Credentials (pre-hashed, no env dependency) ───────────────────────
-const ADMIN_EMAIL = 'n.j.logesh06@gmail.com';
-// bcrypt hash of: Leo@1905
-const ADMIN_PASS_HASH = '$2a$10$5XOGNTpwbzmsnOCfny1zQeMi8BHLhJ4fVszNyDO7isIJEgVGetw/2';
+const { sendAdvocateApprovalEmail, sendAdvocateRejectionEmail } = require('../utils/mailer');
 
 // ─── Admin Login ──────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
@@ -19,16 +17,35 @@ router.post('/login', async (req, res) => {
         if (!email || !password) {
             return res.status(400).json({ message: 'Email and password are required.' });
         }
-        if (email.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+
+        const admin = await Admin.findOne({ email: email.trim().toLowerCase() });
+        if (!admin) {
+            console.log(`[DEBUG] Admin login failed: User ${email} not found.`);
             return res.status(401).json({ message: 'Invalid admin credentials.' });
         }
-        const isMatch = await bcrypt.compare(password, ADMIN_PASS_HASH);
+
+        const isMatch = await bcrypt.compare(password.trim(), admin.password);
         if (!isMatch) {
+            console.log(`[DEBUG] Admin login failed: Password mismatch for ${email}.`);
             return res.status(401).json({ message: 'Invalid admin credentials.' });
         }
+
+        // Log successful login
+        try {
+            await LoginHistory.create({
+                userId: admin._id,
+                userModel: 'Admin',
+                email: admin.email,
+                ipAddress: req.ip || req.connection.remoteAddress,
+                userAgent: req.headers['user-agent']
+            });
+        } catch (logErr) {
+            console.error('Failed to log admin login:', logErr);
+        }
+
         const secret = process.env.JWT_SECRET || 'justexa_fallback_secret_2024';
-        const token = jwt.sign({ id: 'admin', role: 'admin', email: ADMIN_EMAIL }, secret, { expiresIn: '8h' });
-        res.json({ token, role: 'admin', user: { name: 'Administrator', email: ADMIN_EMAIL } });
+        const token = jwt.sign({ id: admin._id, role: 'admin', email: admin.email }, secret, { expiresIn: '8h' });
+        res.json({ token, role: 'admin', user: { name: admin.name, email: admin.email } });
     } catch (err) {
         console.error('Admin login error:', err);
         res.status(500).json({ message: 'Server error during admin login.' });
@@ -116,6 +133,52 @@ router.delete('/advocates/:id', async (req, res) => {
         const deleted = await Advocate.findByIdAndDelete(req.params.id);
         if (!deleted) return res.status(404).json({ message: 'Advocate not found.' });
         res.json({ message: 'Advocate deleted.' });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// ─── Pending Advocate Approvals ───────────────────────────────────────────────
+
+// GET all pending advocates
+router.get('/pending-advocates', async (req, res) => {
+    try {
+        const advocates = await Advocate.find({ status: 'pending' }).select('-password').sort({ createdAt: -1 });
+        res.json({ advocates });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// PUT approve advocate
+router.put('/advocates/:id/approve', async (req, res) => {
+    try {
+        const advocate = await Advocate.findByIdAndUpdate(
+            req.params.id,
+            { $set: { status: 'approved' } },
+            { new: true }
+        ).select('-password');
+        if (!advocate) return res.status(404).json({ message: 'Advocate not found.' });
+        // Email advocate about approval — non-blocking
+        sendAdvocateApprovalEmail(advocate).catch(() => { });
+        res.json({ message: 'Advocate approved successfully.', advocate });
+    } catch (err) {
+        res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// PUT reject advocate
+router.put('/advocates/:id/reject', async (req, res) => {
+    try {
+        const advocate = await Advocate.findByIdAndUpdate(
+            req.params.id,
+            { $set: { status: 'rejected' } },
+            { new: true }
+        ).select('-password');
+        if (!advocate) return res.status(404).json({ message: 'Advocate not found.' });
+        // Email advocate about rejection — non-blocking
+        sendAdvocateRejectionEmail(advocate).catch(() => { });
+        res.json({ message: 'Advocate registration rejected.', advocate });
     } catch (err) {
         res.status(500).json({ message: 'Server error.' });
     }

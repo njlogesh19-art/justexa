@@ -16,8 +16,12 @@ import HolidayTracker from './pages/HolidayTracker';
 import Marketplace from './pages/Marketplace';
 import AdvocateProfile from './pages/AdvocateProfile';
 import AdminDashboard from './pages/AdminDashboard';
-import AdminLogin from './pages/AdminLogin';
-import { isAdminLoggedIn } from './pages/AdminLogin';
+import AdminLogin, { isAdminLoggedIn } from './pages/AdminLogin';
+import AdvocateSignup from './pages/AdvocateSignup';
+import AdvocateLogin from './pages/AdvocateLogin';
+import AdvocateDashboard from './pages/AdvocateDashboard';
+import Messages from './pages/Messages';
+import Inbox from './pages/Inbox';
 
 // Protected route wrapper
 const ProtectedRoute = ({ children, requireUser = false }) => {
@@ -26,6 +30,14 @@ const ProtectedRoute = ({ children, requireUser = false }) => {
     if (!isAuthenticated()) return <Navigate to="/login" replace />;
     if (requireUser && isAdvocate()) return <Navigate to="/" replace />;
     return children;
+};
+
+// Routes advocates to their home and users/guests to the public home
+const DashboardRouter = () => {
+    const { isAuthenticated, isAdvocate, isLoading } = useAuth();
+    if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}><div className="spinner spinner-lg" /></div>;
+    if (isAuthenticated() && isAdvocate()) return <AdvocateDashboard />;
+    return <Dashboard />;
 };
 
 const AppLayout = () => {
@@ -40,7 +52,7 @@ const AppLayout = () => {
                 <main className={`page-content ${!sidebarOpen ? 'sidebar-collapsed' : ''} ${!isAuthenticated() ? 'no-sidebar' : ''}`}
                     style={!isAuthenticated() ? { marginLeft: 0 } : {}}>
                     <Routes>
-                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/" element={<DashboardRouter />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/signup" element={<Signup />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -51,6 +63,10 @@ const AppLayout = () => {
                         <Route path="/holidays" element={<ProtectedRoute><HolidayTracker /></ProtectedRoute>} />
                         <Route path="/marketplace" element={<ProtectedRoute requireUser><Marketplace /></ProtectedRoute>} />
                         <Route path="/marketplace/:id" element={<ProtectedRoute requireUser><AdvocateProfile /></ProtectedRoute>} />
+                        <Route path="/advocate/login" element={<AdvocateLogin />} />
+                        <Route path="/advocate/signup" element={<AdvocateSignup />} />
+                        <Route path="/messages/:advocateId" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+                        <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
                         <Route path="/admin/login" element={<AdminLogin />} />
                         <Route path="/admin" element={isAdminLoggedIn() ? <AdminDashboard /> : <Navigate to="/admin/login" replace />} />
                         <Route path="*" element={<Navigate to="/" replace />} />

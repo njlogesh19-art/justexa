@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getAdvocateById, sendAdvocateRequest } from '../utils/api';
+import { getAdvocateById, sendAdvocateRequest, sendMessageRequest, checkMessageRequestStatus } from '../utils/api';
 
 const CASE_TYPES = [
     'Criminal Law', 'Civil Litigation', 'Family Law', 'Corporate Law',
@@ -34,6 +34,19 @@ const AdvocateProfile = () => {
     const [sending, setSending] = useState(false);
     const [sendSuccess, setSendSuccess] = useState('');
     const [sendError, setSendError] = useState('');
+
+    // Message request state
+    const [msgReqStatus, setMsgReqStatus] = useState('none'); // none | pending | accepted | rejected
+    const [msgReqLoading, setMsgReqLoading] = useState(false);
+
+    // Check existing message request status
+    useEffect(() => {
+        if (id && user && user.role !== 'advocate') {
+            checkMessageRequestStatus(id)
+                .then(res => setMsgReqStatus(res.data.status || 'none'))
+                .catch(() => { });
+        }
+    }, [id, user]);
 
     useEffect(() => {
         const fetchAdvocate = async () => {
@@ -168,15 +181,77 @@ const AdvocateProfile = () => {
                     </div>
                 </div>
 
-                {/* Send Request button */}
-                <button
-                    id="send-request-btn"
-                    className="btn btn-primary w-full"
-                    style={{ fontSize: '1rem', padding: '0.85rem' }}
-                    onClick={() => { setShowModal(true); setSendSuccess(''); setSendError(''); }}
-                >
-                    📨 Send Case Request to {advocate.name}
-                </button>
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                        id="send-request-btn"
+                        className="btn btn-primary"
+                        style={{ flex: 1, fontSize: '1rem', padding: '0.75rem' }}
+                        onClick={() => { setShowModal(true); setSendSuccess(''); setSendError(''); }}
+                    >
+                        📨 Send Case Request
+                    </button>
+                    {user && user.role !== 'advocate' && (() => {
+                        if (msgReqStatus === 'accepted') {
+                            return (
+                                <button
+                                    id="open-chat-btn"
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', whiteSpace: 'nowrap', borderColor: '#16a34a', color: '#16a34a' }}
+                                    onClick={() => navigate(`/messages/${advocate._id}`)}
+                                >
+                                    ✅ Open Chat
+                                </button>
+                            );
+                        }
+                        if (msgReqStatus === 'pending') {
+                            return (
+                                <button
+                                    id="msg-req-pending-btn"
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', whiteSpace: 'nowrap', opacity: 0.7, cursor: 'not-allowed' }}
+                                    disabled
+                                >
+                                    ⏳ Request Sent
+                                </button>
+                            );
+                        }
+                        if (msgReqStatus === 'rejected') {
+                            return (
+                                <button
+                                    id="msg-req-rejected-btn"
+                                    className="btn btn-outline"
+                                    style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', whiteSpace: 'nowrap', opacity: 0.55, cursor: 'not-allowed' }}
+                                    disabled
+                                >
+                                    ❌ Request Declined
+                                </button>
+                            );
+                        }
+                        // none — show request button
+                        return (
+                            <button
+                                id="message-advocate-btn"
+                                className="btn btn-outline"
+                                style={{ padding: '0.75rem 1.25rem', fontSize: '1rem', whiteSpace: 'nowrap' }}
+                                disabled={msgReqLoading}
+                                onClick={async () => {
+                                    setMsgReqLoading(true);
+                                    try {
+                                        const res = await sendMessageRequest(advocate._id);
+                                        setMsgReqStatus(res.data.status || 'pending');
+                                    } catch {
+                                        setMsgReqStatus('pending');
+                                    } finally {
+                                        setMsgReqLoading(false);
+                                    }
+                                }}
+                            >
+                                {msgReqLoading ? <span className="spinner" /> : '💬 Request to Chat'}
+                            </button>
+                        );
+                    })()}
+                </div>
             </div>
 
             {/* Automated Case Request Modal */}

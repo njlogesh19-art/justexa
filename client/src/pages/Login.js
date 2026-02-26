@@ -115,14 +115,20 @@ const Login = () => {
                     <Link to="/signup"><button id="goto-signup" className="btn btn-outline w-full">{t.login_create}</button></Link>
 
                     <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--gray-200)', textAlign: 'center' }}>
-                        <Link to="/admin/login" style={{ textDecoration: 'none' }}>
-                            <button id="admin-panel-btn" type="button"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 1rem', borderRadius: 'var(--radius-sm)', background: 'var(--gray-100)', border: '1px solid var(--gray-200)', color: 'var(--gray-600)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'var(--black)'; e.currentTarget.style.color = 'var(--white)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'var(--gray-100)'; e.currentTarget.style.color = 'var(--gray-600)'; }}>
-                                {t.login_admin}
-                            </button>
+                        <Link to="/admin/login" id="admin-panel-btn"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 1rem', borderRadius: 'var(--radius-sm)', background: 'var(--gray-100)', border: '1px solid var(--gray-200)', color: 'var(--gray-600)', fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--black)'; e.currentTarget.style.color = 'var(--white)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'var(--gray-100)'; e.currentTarget.style.color = 'var(--gray-600)'; }}>
+                            {t.login_admin}
                         </Link>
+                    </div>
+
+                    {/* Advocate Portal */}
+                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--gray-500)' }}>Are you an advocate?</span>
+                        <Link to="/advocate/login" style={{ fontSize: '0.78rem', color: 'var(--black)', fontWeight: 600, textDecoration: 'underline' }}>Sign in</Link>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--gray-400)' }}>·</span>
+                        <Link to="/advocate/signup" style={{ fontSize: '0.78rem', color: 'var(--black)', fontWeight: 600, textDecoration: 'underline' }}>Register</Link>
                     </div>
                 </div>
             </div>

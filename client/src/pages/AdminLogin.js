@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { adminLogin } from '../utils/api';
 
 const ADMIN_TOKEN_KEY = 'justexa_admin_token';
@@ -9,7 +9,6 @@ export const logoutAdmin = () => localStorage.removeItem(ADMIN_TOKEN_KEY);
 export const getAdminToken = () => localStorage.getItem(ADMIN_TOKEN_KEY);
 
 const AdminLogin = () => {
-    const navigate = useNavigate();
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -27,7 +26,8 @@ const AdminLogin = () => {
         try {
             const res = await adminLogin(formData);
             localStorage.setItem(ADMIN_TOKEN_KEY, res.data.token);
-            navigate('/admin', { replace: true });
+            // Use full page redirect (same as logout) so isAdminLoggedIn() guard re-evaluates cleanly
+            window.location.href = '/admin';
         } catch (err) {
             if (!err.response) {
                 setError('Cannot reach server. Make sure the backend is running on port 5000.');

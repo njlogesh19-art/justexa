@@ -24,27 +24,45 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-// Update logged-in user profile (name, location)
+// Update logged-in user/advocate profile
 router.put('/', authMiddleware, async (req, res) => {
     try {
         const { id, role } = req.user;
-        if (role !== 'user') {
-            return res.status(403).json({ message: 'Only users can update their profile here.' });
-        }
-
-        const { name, location } = req.body;
-        if (!name && !location) {
-            return res.status(400).json({ message: 'Provide at least one field to update.' });
-        }
+        const { name, location, mobile_no, city, bio, consultation_fee, picture } = req.body;
 
         const updates = {};
-        if (name) updates.name = name.trim();
-        if (location) updates.location = location.trim();
 
-        const updated = await User.findByIdAndUpdate(id, { $set: updates }, { new: true }).select('-password');
-        if (!updated) return res.status(404).json({ message: 'User not found.' });
+        if (role === 'user') {
+            if (name) updates.name = name.trim();
+            if (location !== undefined) updates.location = location.trim();
+            // picture: base64 data URI, validated loosely
+            if (picture !== undefined) {
+                if (picture === '' || picture.startsWith('data:image/')) {
+                    updates.picture = picture;
+                }
+            }
+            const updated = await User.findByIdAndUpdate(id, { $set: updates }, { new: true }).select('-password');
+            if (!updated) return res.status(404).json({ message: 'User not found.' });
+            return res.json({ message: 'Profile updated successfully.', profile: updated });
+        }
 
-        res.json({ message: 'Profile updated successfully.', profile: updated });
+        if (role === 'advocate') {
+            if (name) updates.name = name.trim();
+            if (mobile_no !== undefined) updates.mobile_no = mobile_no.trim();
+            if (city !== undefined) updates.city = city.trim();
+            if (bio !== undefined) updates.bio = bio.trim();
+            if (consultation_fee !== undefined) updates.consultation_fee = Number(consultation_fee);
+            if (picture !== undefined) {
+                if (picture === '' || picture.startsWith('data:image/')) {
+                    updates.picture = picture;
+                }
+            }
+            const updated = await Advocate.findByIdAndUpdate(id, { $set: updates }, { new: true }).select('-password');
+            if (!updated) return res.status(404).json({ message: 'Advocate not found.' });
+            return res.json({ message: 'Profile updated successfully.', profile: updated });
+        }
+
+        return res.status(400).json({ message: 'Unknown role.' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error while updating profile.' });

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import T from '../context/translations';
+import ThemeToggle from './ThemeToggle';
 
 const LAW_QUOTES = {
     en: [
@@ -111,7 +112,7 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 </Link>
             </div>
 
-            {/* Right: Language toggle + Auth buttons */}
+            {/* Right: Language toggle + Theme toggle + Auth buttons */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 {/* Language Toggle */}
                 <button
@@ -132,6 +133,9 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                 >
                     {lang === 'en' ? '🌐 EN | தமிழ்' : '🌐 தமிழ் | EN'}
                 </button>
+
+                {/* Dark / Light Theme Toggle */}
+                <ThemeToggle />
 
                 {isAuthenticated() ? (
                     <Link to="/profile" style={{ textDecoration: 'none' }}>

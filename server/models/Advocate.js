@@ -10,8 +10,11 @@ const advocateSchema = new mongoose.Schema({
     experience_years: { type: Number, min: 0, default: 0 },
     city: { type: String, trim: true, default: '' },
     consultation_fee: { type: Number, min: 0, default: 0 },
+    bio: { type: String, trim: true, default: '' },
     password: { type: String, default: '' },
-    role: { type: String, default: 'advocate', enum: ['advocate'] }
+    picture: { type: String, default: '' },
+    role: { type: String, default: 'advocate', enum: ['advocate'] },
+    status: { type: String, default: 'approved', enum: ['pending', 'approved', 'rejected'] }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Advocate', advocateSchema);

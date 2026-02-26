@@ -1,10 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import T from '../context/translations';
 import GridBox from '../components/GridBox';
+import api from '../utils/api';
 
+// ── Acceptance Notification Toast ───────────────────────────────────────────
+const AcceptanceNotification = ({ notification, onClose, onGoToInbox }) => (
+    <div
+        style={{
+            position: 'fixed',
+            top: '5.5rem',
+            right: '1.5rem',
+            zIndex: 10000,
+            width: '320px',
+            background: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            border: '1px solid #d1fae5',
+            borderLeft: '4px solid #10b981',
+            overflow: 'hidden',
+            animation: 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+    >
+        {/* Green header bar */}
+        <div style={{
+            background: 'linear-gradient(90deg, #10b981, #059669)',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '1.1rem' }}>✅</span>
+                <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>
+                    Chat Request Accepted!
+                </span>
+            </div>
+            <button
+                onClick={onClose}
+                style={{
+                    background: 'none', border: 'none', color: '#fff',
+                    cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1,
+                    opacity: 0.8, padding: 0,
+                }}
+            >×</button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                <strong>{notification.advocateName}</strong>
+                {notification.advocateSpec ? ` (${notification.advocateSpec})` : ''}
+                {' '}has accepted your chat request. You can now message them directly.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                    onClick={onGoToInbox}
+                    style={{
+                        flex: 1,
+                        background: '#10b981',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '7px',
+                        padding: '0.55rem 1rem',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                    }}
+                >
+                    📥 Go to Inbox
+                </button>
+                <button
+                    onClick={onClose}
+                    style={{
+                        background: '#f3f4f6',
+                        color: '#6b7280',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '7px',
+                        padding: '0.55rem 0.85rem',
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                    }}
+                >
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+);
+
+// ── Auth Gate Modal ──────────────────────────────────────────────────────────
 const AuthGateModal = ({ targetPath, onClose }) => {
     const navigate = useNavigate();
     const { lang } = useLanguage();
@@ -30,12 +118,46 @@ const AuthGateModal = ({ targetPath, onClose }) => {
     );
 };
 
+// ── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, role } = useAuth();
     const { lang } = useLanguage();
     const t = T[lang];
     const navigate = useNavigate();
     const [modal, setModal] = useState(null);
+    const [notification, setNotification] = useState(null);
+
+    const SEEN_KEY = 'justexa_seen_accepted_requests';
+
+    const checkAcceptedRequests = useCallback(async () => {
+        // Only check for regular users (not advocates, not unauthenticated)
+        if (!isAuthenticated() || role === 'advocate') return;
+        try {
+            const res = await api.get('/api/message-requests/accepted');
+            const accepted = res.data.accepted || [];
+            if (accepted.length === 0) return;
+
+            // Track which IDs we've already notified about
+            const seen = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
+            const newOnes = accepted.filter(r => !seen.includes(r._id.toString()));
+
+            if (newOnes.length > 0) {
+                // Show the most recent one
+                setNotification(newOnes[0]);
+                // Mark all new ones as seen
+                const updatedSeen = [...seen, ...newOnes.map(r => r._id.toString())];
+                localStorage.setItem(SEEN_KEY, JSON.stringify(updatedSeen));
+            }
+        } catch {
+            // Silently fail — user may not be logged in or endpoint unavailable
+        }
+    }, [isAuthenticated, role]);
+
+    useEffect(() => {
+        checkAcceptedRequests();
+        const interval = setInterval(checkAcceptedRequests, 15000);
+        return () => clearInterval(interval);
+    }, [checkAcceptedRequests]);
 
     const handleBoxClick = (path, isMarketplace = false) => {
         if (!isAuthenticated()) {
@@ -49,6 +171,15 @@ const Dashboard = () => {
     return (
         <div className="animate-fade-in">
             {modal && <AuthGateModal targetPath={modal} onClose={() => setModal(null)} />}
+
+            {/* Acceptance notification toast */}
+            {notification && (
+                <AcceptanceNotification
+                    notification={notification}
+                    onClose={() => setNotification(null)}
+                    onGoToInbox={() => { setNotification(null); navigate('/inbox'); }}
+                />
+            )}
 
             <div style={{ textAlign: 'center', padding: '3rem 1rem 2.5rem', borderBottom: '1px solid var(--gray-200)', marginBottom: '2.5rem' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.15em', color: 'var(--gray-400)', textTransform: 'uppercase', marginBottom: '1rem' }}>
