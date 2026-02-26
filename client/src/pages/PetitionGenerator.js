@@ -82,7 +82,7 @@ const PetitionGenerator = () => {
             </div>
 
             {activeTab === 'generate' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', height: 'calc(100vh - 300px)', minHeight: '520px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))', gap: '1.5rem' }}>
 
                     {/* ── Input Panel ── */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -118,7 +118,8 @@ const PetitionGenerator = () => {
                                 onChange={e => { setInput(e.target.value); setError(''); }}
                                 placeholder={t.petition_placeholder}
                                 style={{
-                                    flex: 1, resize: 'none',
+                                    flex: 1, resize: 'vertical',
+                                    minHeight: '200px',
                                     border: '2px solid var(--gray-200)',
                                     borderRadius: 'var(--radius-sm)',
                                     padding: '1rem', fontSize: '0.9rem', lineHeight: 1.7,
