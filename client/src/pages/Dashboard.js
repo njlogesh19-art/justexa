@@ -195,7 +195,7 @@ const Dashboard = () => {
                 </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', maxWidth: '900px', margin: '0 auto', padding: '0 1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(260px, 100%), 1fr))', gap: '1.5rem', maxWidth: '900px', margin: '0 auto', padding: '0 1rem' }}>
                 <GridBox id="box-petition" icon="✍️" title={t.dash_box_petition_title} description={t.dash_box_petition_desc} onClick={() => handleBoxClick('/petition')} />
                 <GridBox id="box-case-tracker" icon="⚖️" title={t.dash_box_cases_title} description={t.dash_box_cases_desc} onClick={() => handleBoxClick('/case-tracker')} />
                 <GridBox id="box-holidays" icon="📅" title={t.dash_box_holidays_title} description={t.dash_box_holidays_desc} onClick={() => handleBoxClick('/holidays')} />
