@@ -49,7 +49,7 @@ const MenuIcon = ({ open }) => (
     </svg>
 );
 
-const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
+const Navbar = ({ sidebarOpen, setSidebarOpen, isMobile }) => {
     const { isAuthenticated, user } = useAuth();
     const { lang, switchLang } = useLanguage();
     const t = T[lang];
@@ -77,11 +77,11 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
             borderBottom: '1px solid var(--gray-200)',
             display: 'flex', alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '0 1.5rem', zIndex: 100,
+            padding: isMobile ? '0 1rem' : '0 1.5rem', zIndex: 100,
             boxShadow: '0 1px 0 rgba(0,0,0,0.06)',
         }}>
             {/* Left: Hamburger + Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '1rem' }}>
                 {isAuthenticated() && (
                     <button
                         id="sidebar-toggle"
@@ -93,61 +93,64 @@ const Navbar = ({ sidebarOpen, setSidebarOpen }) => {
                         <MenuIcon open={sidebarOpen} />
                     </button>
                 )}
-                <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none' }}>
+                <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
                     <div style={{ color: 'var(--black)' }}><ScaleIcon /></div>
                     <div>
-                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: '1.4rem', fontWeight: '700', color: 'var(--black)', lineHeight: 1 }}>
+                        <div style={{ fontFamily: 'var(--font-serif)', fontSize: isMobile ? '1.2rem' : '1.4rem', fontWeight: '700', color: 'var(--black)', lineHeight: 1 }}>
                             Justexa
                         </div>
-                        <div style={{
-                            fontSize: '0.65rem', color: 'var(--gray-500)',
-                            maxWidth: '320px', overflow: 'hidden', whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
-                            opacity: quoteVisible ? 1 : 0,
-                            transition: 'opacity 0.4s ease', fontStyle: 'italic',
-                        }}>
-                            {quotes[quoteIdx]}
-                        </div>
+                        {!isMobile && (
+                            <div style={{
+                                fontSize: '0.65rem', color: 'var(--gray-500)',
+                                maxWidth: '320px', overflow: 'hidden', whiteSpace: 'nowrap',
+                                textOverflow: 'ellipsis',
+                                opacity: quoteVisible ? 1 : 0,
+                                transition: 'opacity 0.4s ease', fontStyle: 'italic',
+                            }}>
+                                {quotes[quoteIdx]}
+                            </div>
+                        )}
                     </div>
                 </Link>
             </div>
 
-            {/* Right: Language toggle + Theme toggle + Auth buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                {/* Language Toggle */}
+            {/* Right: Language toggle + Theme toggle + Auth */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.4rem' : '0.75rem' }}>
                 <button
                     id="lang-toggle"
                     onClick={() => switchLang(lang === 'en' ? 'ta' : 'en')}
                     title={lang === 'en' ? 'Switch to Tamil' : 'Switch to English'}
                     style={{
                         display: 'flex', alignItems: 'center', gap: '0.3rem',
-                        padding: '0.3rem 0.75rem', borderRadius: '100px',
+                        padding: isMobile ? '0.3rem 0.5rem' : '0.3rem 0.75rem',
+                        borderRadius: '100px',
                         border: '1.5px solid var(--gray-200)',
                         background: 'var(--gray-100)',
-                        cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700,
+                        cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700,
                         color: 'var(--gray-700)', transition: 'all 0.2s',
-                        lineHeight: 1.2,
+                        lineHeight: 1.2, whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--black)'; e.currentTarget.style.background = 'var(--black)'; e.currentTarget.style.color = 'var(--white)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--gray-200)'; e.currentTarget.style.background = 'var(--gray-100)'; e.currentTarget.style.color = 'var(--gray-700)'; }}
                 >
-                    {lang === 'en' ? '🌐 EN | தமிழ்' : '🌐 தமிழ் | EN'}
+                    {isMobile ? (lang === 'en' ? '🌐' : 'த') : (lang === 'en' ? '🌐 EN | தமிழ்' : '🌐 தமிழ் | EN')}
                 </button>
 
-                {/* Dark / Light Theme Toggle */}
                 <ThemeToggle />
 
                 {isAuthenticated() ? (
-                    <Link to="/profile" style={{ textDecoration: 'none' }}>
-                        <span style={{
-                            fontSize: '0.85rem', color: 'var(--gray-600)', fontWeight: 500,
-                            display: 'flex', alignItems: 'center', gap: '0.4rem',
-                            padding: '0.35rem 0.75rem', borderRadius: '100px',
-                            border: '1px solid var(--gray-200)', cursor: 'pointer',
-                        }}>
-                            👤 {user?.name}
-                        </span>
-                    </Link>
+                    !isMobile && (
+                        <Link to="/profile" style={{ textDecoration: 'none' }}>
+                            <span style={{
+                                fontSize: '0.85rem', color: 'var(--gray-600)', fontWeight: 500,
+                                display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                padding: '0.35rem 0.75rem', borderRadius: '100px',
+                                border: '1px solid var(--gray-200)', cursor: 'pointer',
+                            }}>
+                                👤 {user?.name}
+                            </span>
+                        </Link>
+                    )
                 ) : (
                     <>
                         <Link to="/login" id="nav-login-btn">

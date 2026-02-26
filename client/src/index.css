@@ -697,16 +697,118 @@ select {
 }
 
 /* ---- Responsive ---- */
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+:root {
+  --bottom-nav-height: 60px;
+}
+
 @media (max-width: 768px) {
+
+  /* Layout */
   .page-content {
-    margin-left: 0;
+    margin-left: 0 !important;
     padding: 1rem;
+    padding-bottom: calc(var(--bottom-nav-height) + 1rem);
+    min-height: calc(100vh - var(--navbar-height));
   }
 
   .page-content.sidebar-collapsed {
-    margin-left: 0;
+    margin-left: 0 !important;
+  }
+
+  /* Typography */
+  .page-header h1 {
+    font-size: 1.4rem;
+  }
+
+  .page-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+  }
+
+  /* Cards & Grid boxes */
+  .card {
+    padding: 1rem;
+  }
+
+  .grid-box {
+    padding: 1.5rem 1rem;
+  }
+
+  .grid-box-icon {
+    font-size: 2rem;
+  }
+
+  .grid-box-title {
+    font-size: 0.95rem;
+  }
+
+  .grid-box-desc {
+    font-size: 0.78rem;
+  }
+
+  /* Modals — full-width bottom sheet */
+  .modal-overlay {
+    align-items: flex-end;
+  }
+
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 1.5rem 1.25rem;
+    margin: 0;
+  }
+
+  /* Tabs — scrollable */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0;
+    flex-wrap: nowrap;
+  }
+
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    padding: 0.65rem 1rem;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+
+  /* Buttons — easier touch targets */
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: 0.4rem 0.875rem;
+  }
+
+  /* Form inputs — prevent iOS zoom on focus */
+  .form-input {
+    font-size: 16px;
+  }
+
+  /* Modal actions stack on mobile */
+  .modal-actions {
+    flex-direction: column;
   }
 }
+
 
 /* ============================================
    DARK THEME — Strictly Black & White

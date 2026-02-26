@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import BottomNav from './components/BottomNav';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
@@ -23,6 +24,17 @@ import AdvocateDashboard from './pages/AdvocateDashboard';
 import Messages from './pages/Messages';
 import Inbox from './pages/Inbox';
 
+// Hook to detect mobile screens
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
+    useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handler);
+        return () => window.removeEventListener('resize', handler);
+    }, []);
+    return isMobile;
+};
+
 // Protected route wrapper
 const ProtectedRoute = ({ children, requireUser = false }) => {
     const { isAuthenticated, isAdvocate, isLoading } = useAuth();
@@ -40,17 +52,28 @@ const DashboardRouter = () => {
     return <Dashboard />;
 };
 
+// Auto-close sidebar on route change on mobile
+const SidebarCloser = ({ isMobile, setSidebarOpen }) => {
+    const location = useLocation();
+    useEffect(() => {
+        if (isMobile) setSidebarOpen(false);
+    }, [location.pathname, isMobile, setSidebarOpen]);
+    return null;
+};
+
 const AppLayout = () => {
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const isMobile = useIsMobile();
+    const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
     const { isAuthenticated } = useAuth();
 
     return (
         <div className="app-layout">
-            <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+            <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} isMobile={isMobile} />
             <div className="main-content">
-                {isAuthenticated() && <Sidebar isOpen={sidebarOpen} />}
-                <main className={`page-content ${!sidebarOpen ? 'sidebar-collapsed' : ''} ${!isAuthenticated() ? 'no-sidebar' : ''}`}
-                    style={!isAuthenticated() ? { marginLeft: 0 } : {}}>
+                <SidebarCloser isMobile={isMobile} setSidebarOpen={setSidebarOpen} />
+                {isAuthenticated() && <Sidebar isOpen={sidebarOpen} isMobile={isMobile} setSidebarOpen={setSidebarOpen} />}
+                <main className={`page-content ${!sidebarOpen ? 'sidebar-collapsed' : ''} ${!isAuthenticated() ? 'no-sidebar' : ''} ${isMobile ? 'mobile' : ''}`}
+                    style={!isAuthenticated() || isMobile ? { marginLeft: 0 } : {}}>
                     <Routes>
                         <Route path="/" element={<DashboardRouter />} />
                         <Route path="/login" element={<Login />} />
@@ -73,6 +96,7 @@ const AppLayout = () => {
                     </Routes>
                 </main>
             </div>
+            {isAuthenticated() && isMobile && <BottomNav />}
         </div>
     );
 };
@@ -90,3 +114,4 @@ function App() {
 }
 
 export default App;
+

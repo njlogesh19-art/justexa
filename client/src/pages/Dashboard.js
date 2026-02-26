@@ -6,6 +6,14 @@ import T from '../context/translations';
 import GridBox from '../components/GridBox';
 import api from '../utils/api';
 
+const useIsMobile = () => {
+    const [m, setM] = useState(() => window.innerWidth <= 768);
+    useEffect(() => { const h = () => setM(window.innerWidth <= 768); window.addEventListener('resize', h); return () => window.removeEventListener('resize', h); }, []);
+    return m;
+};
+
+
+
 // ── Acceptance Notification Toast ───────────────────────────────────────────
 const AcceptanceNotification = ({ notification, onClose, onGoToInbox }) => (
     <div
