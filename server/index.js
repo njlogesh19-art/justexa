@@ -12,8 +12,24 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 const app = express();
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.CLIENT_URL,                // e.g. https://justexa.vercel.app
+].filter(Boolean);
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    // Allow localhost and any *.vercel.app deployment URL
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true
 }));
 
