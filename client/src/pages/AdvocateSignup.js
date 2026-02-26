@@ -91,7 +91,6 @@ const AdvocateSignup = () => {
         }
     };
 
-    const pwErrors = formData.password ? validatePassword(formData.password) : [];
     const checks = [
         formData.password.length >= 8, /[A-Z]/.test(formData.password),
         /[a-z]/.test(formData.password), /[0-9]/.test(formData.password),

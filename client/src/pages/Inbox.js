@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { getConversations } from '../utils/api';
 
 const Inbox = () => {
-    const { user, role } = useAuth();
+    const { role } = useAuth();
     const navigate = useNavigate();
     const [conversations, setConversations] = useState([]);
     const [loading, setLoading] = useState(true);
